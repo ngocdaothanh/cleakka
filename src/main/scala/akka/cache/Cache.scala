@@ -1,4 +1,4 @@
-package cleaner_akka
+package akka.cache
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
 import java.nio.ByteBuffer

@@ -1,6 +1,6 @@
-package cleaner_akka.test
+package akka.cache.test
 
-import cleaner_akka._
+import akka.cache._
 
 object Benchmark {
   private val LOOP_COUNT = 1000000

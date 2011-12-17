@@ -1,4 +1,4 @@
-package cleaner_akka
+package akka.cache
 
 class CacheStatistics(
   cachePuts:           Long,
