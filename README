@@ -1,0 +1,51 @@
+Cleaner Akka:
+* is an cache for Scala
+* uses Akka so that cache data can be distributed among different server
+* uses JVM direct memory to store cache data in aff-JVM-heap memory
+* frees memory immediately when cache entry is removed, if sun.misc.Cleaner exists
+* imitates JCache API
+
+Usage
+-----
+
+Create a cache with size 10 MB (max is Int.MaxValue, 2GB):
+val cache = new Cache[String, Int]("student marks", 10 * 1024 * 1024)
+
+Put:
+cache.put("John",  83)
+cache.put("Peter", 93)
+
+Get:
+cache.get("John")  // => Some(83)
+cache.get("Bill")  // => None
+
+Remove:
+cache.remove("Peter")  // => true
+cache.removeAll()
+
+Conditional put:
+cache.putIfAbsent("Jack", 73)
+cache.putIfAbsent("Mac") {
+  val mark1 = 63
+  val mark2 = 54
+  (mark1 + mark2) / 2  // The result will be put in cache if absent
+}
+
+Remember to config MaxDirectMemorySize
+--------------------------------------
+
+Amount of direct memory that can be allocated is limited by JVM option
+-XX:MaxDirectMemorySize, which by default has relatively low size of 64 MB.
+To increase, add setting like this when starting JVM:
+
+-XX:MaxDirectMemorySize=512m
+
+Otherwise you are likely to hit an OutOfMemoryError when using large cache.
+
+More info
+---------
+
+* Off-heap cache: http://www.quora.com/How-does-BigMemory-hide-objects-from-the-Java-garbage-collector
+* JCache: https://github.com/jsr107/jsr107spec
+* sun.misc.Unsafe: http://stackoverflow.com/questions/5574241/interesting-uses-of-sun-misc-unsafe
+* sun.misc.Cleaner: http://groups.google.com/group/netty/browse_thread/thread/3be7f573384af977
