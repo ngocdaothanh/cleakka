@@ -1,8 +1,10 @@
 package akka.cache
 
+import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
 import java.nio.ByteBuffer
 import scala.collection.mutable.{HashMap => MMap}
+import akka.util.Duration
 
 object Cache {
   val WATERMARK = 0.75
@@ -11,25 +13,32 @@ object Cache {
 class Cache[K, V](val name: String, val limit: Int) {
   import Cache._
 
-  private val data = new MMap[K, ByteBuffer]
+  private val data = new MMap[K, Entry]
   private var used = 0
 
-  private var cachePuts:           Long = 0
-  private var cacheGets:           Long = 0
-  private var cacheHits:           Long = 0
-  private var cacheMisses:         Long = 0
-  private var cacheRemovals:       Long = 0
+  private var cachePuts:       Long = 0
+  private var cacheGets:       Long = 0
+  private var cacheHits:       Long = 0
+  private var cacheMisses:     Long = 0
+  private var cacheRemovals:   Long = 0
 
-  private var totalGetMillis:      Long = 0
-  private var totalePutMillis:     Long = 0
-  private var totalRemoveMillis:   Long = 0
+  private var totalGetMillis:  Long = 0
+  private var totalePutMillis: Long = 0
 
   //----------------------------------------------------------------------------
 
   def containsKey(key: K) = synchronized { data.isDefinedAt(key) }
 
-  def put(key: K, value: V): Unit = synchronized {
+  def put(key: K, value: V, ttl: Duration = Duration.Inf): Unit = synchronized {
     val t1 = System.currentTimeMillis
+
+    val lastEntryo = data.get(key)
+    if (lastEntryo.isDefined) {
+      val buffer = lastEntryo.get.directByteBuffer
+      data.remove(key)
+      used -= buffer.capacity
+      DirectByteBufferCleaner.clean(buffer)
+    }
 
     val bytes     = serialize(value)
     val size      = bytes.length
@@ -40,51 +49,76 @@ class Cache[K, V](val name: String, val limit: Int) {
     if (fit) {
       val buffer = ByteBuffer.allocateDirect(bytes.length)
       buffer.put(bytes)
-      data(key)  = buffer
+
+      data(key)  = new Entry(buffer, ttl, t1)
       used      += size
       cachePuts += 1
     }
 
-    val t2 = System.currentTimeMillis
+    val t2           = System.currentTimeMillis
     totalePutMillis += t2 - t1
   }
 
-  def putIfAbsent(key: K, value: V): Boolean = synchronized {
-    if (data.isDefinedAt(key)) {
-      false
-    } else {
-      put(key, value)
-      true
+  def putIfAbsent(key: K, value: V, ttl: Duration = Duration.Inf): Boolean = synchronized {
+    data.get(key) match {
+      case None =>
+        put(key, value, ttl)
+        true
+
+      case Some(entry) =>
+        entry.lastAccessed = System.currentTimeMillis
+        false
     }
   }
 
-  def putIfAbsent(key: K)(f: => V): Boolean = synchronized {
-    if (data.isDefinedAt(key)) {
-      false
-    } else {
-      val value: V = f
-      put(key, value)
-      true
+  /**
+   * Named "putIfAbsent2" to avoid error:
+   * multiple overloaded alternatives of method putIfAbsent define default arguments
+   *
+   * http://stackoverflow.com/questions/4652095/why-does-the-scala-compiler-disallow-overloaded-methods-with-default-arguments
+   */
+  def putIfAbsent2(key: K, ttl: Duration = Duration.Inf)(f: => V): Boolean = synchronized {
+    data.get(key) match {
+      case None =>
+        val value: V = f
+        put(key, value, ttl)
+        true
+
+      case Some(entry) =>
+        entry.lastAccessed = System.currentTimeMillis
+        false
     }
   }
 
   def get(key: K): Option[V] = synchronized {
-    val t1  = System.currentTimeMillis
+    val t1 = System.currentTimeMillis
 
+    cacheGets += 1
     val ret = data.get(key) match {
       case None =>
         cacheMisses += 1
         None
 
-      case Some(buffer) =>
-        cacheHits += 1
-        buffer.rewind
-        val bytes = new Array[Byte](buffer.capacity)
-        buffer.get(bytes)
-        deserialize(bytes)
+      case Some(entry) =>
+        val buffer = entry.directByteBuffer
+        val dt     = t1 - entry.lastAccessed
+        if (entry.ttl > Duration(dt, MILLISECONDS)) {
+          cacheHits         += 1
+          entry.lastAccessed = t1
+
+          buffer.rewind
+          val bytes = new Array[Byte](buffer.capacity)
+          buffer.get(bytes)
+          deserialize(bytes)
+        } else {
+          cacheMisses += 1
+          data.remove(key)
+          used -= buffer.capacity
+          DirectByteBufferCleaner.clean(buffer)
+          None
+        }
     }
 
-    cacheGets += 1
     val t2 = System.currentTimeMillis
     totalGetMillis += t2 - t1
 
@@ -92,30 +126,23 @@ class Cache[K, V](val name: String, val limit: Int) {
   }
 
   def remove(key: K): Boolean = synchronized {
-    val t1  = System.currentTimeMillis
+    data.remove(key) match {
+      case None => false
 
-    val ret = data.remove(key) match {
-      case None         => false
-      case Some(buffer) =>
+      case Some(entry) =>
+        val buffer     = entry.directByteBuffer
         cacheRemovals += 1
-        used -= buffer.capacity
+        used          -= buffer.capacity
         DirectByteBufferCleaner.clean(buffer)
         true
     }
-
-    val t2 = System.currentTimeMillis
-    totalRemoveMillis += t2 - t1
-
-    ret
   }
 
   def removeAll(): Unit = synchronized {
-    for (key <- data.keys) {
-      val buffer = data.remove(key).get
-      DirectByteBufferCleaner.clean(buffer)
-    }
+    for (entry <- data.values) DirectByteBufferCleaner.clean(entry.directByteBuffer)
+    data.clear()
     cacheRemovals += 1
-    used = 0
+    used           = 0
   }
 
   def getStatistics = synchronized {
@@ -124,7 +151,6 @@ class Cache[K, V](val name: String, val limit: Int) {
 
     val averagePutMillis    = totalePutMillis   / cachePuts
     val averageGetMillis    = totalGetMillis    / cacheGets
-    val averageRemoveMillis = totalRemoveMillis / cacheRemovals
 
     new CacheStatistics(
       cachePuts,
@@ -133,10 +159,8 @@ class Cache[K, V](val name: String, val limit: Int) {
       cacheHitPercentage,
       cacheMisses,
       cacheMissPercentage,
-      cacheRemovals,
-      averageGetMillis,
       averagePutMillis,
-      averageRemoveMillis
+      averageGetMillis
     )
   }
   //----------------------------------------------------------------------------
@@ -147,9 +171,10 @@ class Cache[K, V](val name: String, val limit: Int) {
       val ratio     = 1.0 * used / limit
       val remaining = limit - used
       if (ratio > WATERMARK || remaining < size) {
-        val buffer = data.remove(key).get
+        val entry  = data.remove(key).get
+        val buffer = entry.directByteBuffer
+        used      -= buffer.capacity
         DirectByteBufferCleaner.clean(buffer)
-        used -= buffer.capacity
       } else {
         return true  // break the loop
       }
