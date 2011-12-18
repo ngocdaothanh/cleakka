@@ -3,13 +3,7 @@ package akka.cache
 import akka.actor.ActorRef
 import akka.dispatch.Future
 
-trait WithActorRef {
-  protected val ref: ActorRef
-}
-
-trait CacheActorRefApi {
-  this: WithActorRef =>
-
+class CacheActorRefApi(ref: ActorRef) {
   import Msg._
 
   def containsKey(key: Any) =

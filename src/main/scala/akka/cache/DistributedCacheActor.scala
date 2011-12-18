@@ -4,17 +4,8 @@ import akka.actor.{Actor, ActorRef}
 import akka.event.EventHandler
 import Actor._
 
-object RemoteCacheActor {
-  def register(cacheName: String, limit: Int) {
-    remote.register(actorName(cacheName), actorOf(new RemoteCacheActor(limit)))
-  }
-
-  def actorName(cacheName: String) =
-    classOf[RemoteCacheActor].getName + "-" + cacheName
-}
-
 /** Decides where to store the cache based on Ketama algorithm. */
-class RemoteCacheActor(limit: Int) extends Actor {
+class DistributedCacheActor(limit: Int) extends Actor {
   private var local:   ActorRef        = _
   private var remotes: Array[ActorRef] = _
 

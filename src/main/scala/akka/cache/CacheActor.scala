@@ -1,6 +1,7 @@
 package akka.cache
 
-import akka.actor.{Actor, ActorRef}
+import akka.actor.Actor
+import akka.event.EventHandler
 import Actor._
 
 /** Thread-safe local cache. */
@@ -38,6 +39,9 @@ class CacheActor(val limit: Int) extends Actor {
 
     case Stats =>
       self.reply(cache.stats)
+
+    case other =>
+      EventHandler.warning(self, "Unknown message received: " + other)
   }
 
 }

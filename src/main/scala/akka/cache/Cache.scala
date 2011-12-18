@@ -5,16 +5,41 @@ import java.nio.ByteBuffer
 
 import scala.collection.mutable.{HashMap => MMap}
 
+import akka.actor.Actor
+import Actor._
+
 object Cache {
   val WATERMARK = 0.75
+
+  /** Creates local cache actor. */
+  def createLocal(limit: Int) = {
+    val ref = actorOf(new CacheActor(limit))
+    ref.start()
+    new CacheActorRefApi(ref)
+  }
+
+  /** Registers cache actor on this node for other nodes to use. */
+  def registerRemote(cacheName: String, limit: Int) {
+    remote.register(remoteActorName(cacheName), actorOf(new CacheActor(limit)))
+  }
+
+  /** Gets cache actor from remote nodes. */
+  def getRemote(cacheName: String, host: String, port: Int) = {
+    val ref = remote.actorFor(remoteActorName(cacheName), host, port)
+    ref.start()
+    new CacheActorRefApi(ref)
+  }
+
+  def getDistributed(cachaName: String) = {
+    null
+  }
+
+  /** Avoids naming conflict with other part of the system. */
+  private def remoteActorName(cacheName: String) = getClass.getName + "-" + cacheName
 }
 
 /** Non thread-safe local cache. For thread-safe use CacheActor instead. */
 class Cache(val limit: Int) {
-  import Cache._
-
-  //----------------------------------------------------------------------------
-
   private val data = new MMap[Any, Entry]
   private var used = 0
 
@@ -172,7 +197,7 @@ class Cache(val limit: Int) {
     for (key <- data.keys) {
       val ratio     = 1.0 * used / limit
       val remaining = limit - used
-      if (ratio > WATERMARK || remaining < size) {
+      if (ratio > Cache.WATERMARK || remaining < size) {
         val entry  = data.remove(key).get
         val buffer = entry.directByteBuffer
         used      -= buffer.capacity
