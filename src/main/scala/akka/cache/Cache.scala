@@ -1,19 +1,24 @@
 package akka.cache
 
-import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
 import java.nio.ByteBuffer
+import java.util.concurrent.TimeUnit.MILLISECONDS
+
 import scala.collection.mutable.{HashMap => MMap}
+
 import akka.util.Duration
 
 object Cache {
   val WATERMARK = 0.75
 }
 
-class Cache[K, V](val name: String, val limit: Int) {
+/** This is not thread-safe. For thread-safe use CacheActor instead. */
+class Cache(val limit: Int) {
   import Cache._
 
-  private val data = new MMap[K, Entry]
+  //----------------------------------------------------------------------------
+
+  private val data = new MMap[Any, Entry]
   private var used = 0
 
   private var cachePuts:       Long = 0
@@ -27,9 +32,9 @@ class Cache[K, V](val name: String, val limit: Int) {
 
   //----------------------------------------------------------------------------
 
-  def containsKey(key: K) = synchronized { data.isDefinedAt(key) }
+  def containsKey(key: Any) = data.isDefinedAt(key)
 
-  def put(key: K, value: V, ttl: Duration = Duration.Inf): Unit = synchronized {
+  def put(key: Any, value: Any, ttl: Duration = Duration.Inf) {
     val t1 = System.currentTimeMillis
 
     val lastEntryo = data.get(key)
@@ -59,7 +64,7 @@ class Cache[K, V](val name: String, val limit: Int) {
     totalePutMillis += t2 - t1
   }
 
-  def putIfAbsent(key: K, value: V, ttl: Duration = Duration.Inf): Boolean = synchronized {
+  def putIfAbsent(key: Any, value: Any, ttl: Duration = Duration.Inf): Boolean = {
     data.get(key) match {
       case None =>
         put(key, value, ttl)
@@ -77,11 +82,10 @@ class Cache[K, V](val name: String, val limit: Int) {
    *
    * http://stackoverflow.com/questions/4652095/why-does-the-scala-compiler-disallow-overloaded-methods-with-default-arguments
    */
-  def putIfAbsent2(key: K, ttl: Duration = Duration.Inf)(f: => V): Boolean = synchronized {
+  def putIfAbsent2(key: Any, ttl: Duration = Duration.Inf)(f: => Any): Boolean = {
     data.get(key) match {
       case None =>
-        val value: V = f
-        put(key, value, ttl)
+        put(key, f, ttl)
         true
 
       case Some(entry) =>
@@ -90,7 +94,7 @@ class Cache[K, V](val name: String, val limit: Int) {
     }
   }
 
-  def get(key: K): Option[V] = synchronized {
+  def get[T](key: Any): Option[T] = {
     val t1 = System.currentTimeMillis
 
     cacheGets += 1
@@ -125,7 +129,7 @@ class Cache[K, V](val name: String, val limit: Int) {
     ret
   }
 
-  def remove(key: K): Boolean = synchronized {
+  def remove(key: Any): Boolean = {
     data.remove(key) match {
       case None => false
 
@@ -138,14 +142,14 @@ class Cache[K, V](val name: String, val limit: Int) {
     }
   }
 
-  def removeAll(): Unit = synchronized {
+  def removeAll() {
     for (entry <- data.values) DirectByteBufferCleaner.clean(entry.directByteBuffer)
     data.clear()
     cacheRemovals += 1
     used           = 0
   }
 
-  def getStatistics = synchronized {
+  def stats = {
     val cacheHitPercentage  = 1.0 * cacheHits   / cacheGets
     val cacheMissPercentage = 1.0 * cacheMisses / cacheGets
 
@@ -163,6 +167,7 @@ class Cache[K, V](val name: String, val limit: Int) {
       averageGetMillis
     )
   }
+
   //----------------------------------------------------------------------------
 
   /** @return true if bytes of "size" can be put in cache */
@@ -184,7 +189,7 @@ class Cache[K, V](val name: String, val limit: Int) {
     remaining >= size
   }
 
-  private def serialize(value: V): Array[Byte] = {
+  private def serialize(value: Any): Array[Byte] = {
     val baos  = new ByteArrayOutputStream
     val oos   = new ObjectOutputStream(baos)
     oos.writeObject(value)
@@ -194,14 +199,14 @@ class Cache[K, V](val name: String, val limit: Int) {
     bytes
   }
 
-  private def deserialize(bytes: Array[Byte]): Option[V] = {
+  private def deserialize[T](bytes: Array[Byte]): Option[T] = {
     try {
       val bais  = new ByteArrayInputStream(bytes)
       val ois   = new ObjectInputStream(bais)
       val value = ois.readObject
       ois.close
       bais.close
-      Some(value.asInstanceOf[V])
+      Some(value.asInstanceOf[T])
     } catch {
       case _ => None
     }
