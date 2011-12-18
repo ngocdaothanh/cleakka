@@ -1,6 +1,6 @@
 package akka.cache
 
-class CacheStatistics(
+class Stats(
   cachePuts:           Long,
   cacheGets:           Long,
   cacheHits:           Long,
@@ -10,7 +10,7 @@ class CacheStatistics(
 
   averagePutMillis:    Double,
   averageGetMillis:    Double
-) {
+) extends Serializable {
   override def toString = (
     "Puts:           " + cachePuts     + "\n" +
     "Gets:           " + cacheGets     + "\n" +

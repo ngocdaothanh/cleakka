@@ -2,19 +2,9 @@ package akka.cache
 
 import akka.actor.Actor
 
-// Use Int for now because akka.util.Duration is not serializable
-// java.io.NotSerializableException: akka.util.Duration$$anon$1
-// 0 = Duration.Inf
-case class ContainsKey(key: Any)
-case class Put(key: Any, value: Any, ttlSecs: Int = 0)
-case class PutIfAbsent(key: Any, value: Any, ttlSecs: Int = 0)
-case class PutIfAbsent2(key: Any, ttlSecs: Int = 0)(f: => Any)
-case class Get[T](key: Any)
-case class Remove(key: Any)
-case class RemoveAll()
-case class Stats()
-
 class CacheActor(val limit: Int) extends Actor {
+  import Msg._
+
   private var cache: Cache = _
 
   override def preStart() {
@@ -44,7 +34,7 @@ class CacheActor(val limit: Int) extends Actor {
     case RemoveAll =>
       cache.removeAll()
 
-    case Stats =>
+    case GetStats =>
       self.reply(cache.stats)
   }
 }
