@@ -37,8 +37,8 @@ class CacheActor(val limit: Int) extends Actor {
     case RemoveAll =>
       cache.removeAll()
 
-    case Stats =>
-      self.reply(cache.stats)
+    case GetStats =>
+      self.reply(cache.getStats)
 
     case other =>
       EventHandler.warning(self, "Unknown message received: " + other)

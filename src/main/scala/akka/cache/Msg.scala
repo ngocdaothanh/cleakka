@@ -15,5 +15,5 @@ object Msg {
   case class Get(key: Any) extends Msg
   case class Remove(key: Any) extends Msg
   case object RemoveAll extends Msg
-  case object Stats extends Msg
+  case object GetStats extends Msg
 }

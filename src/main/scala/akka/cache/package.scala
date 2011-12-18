@@ -11,19 +11,23 @@ package object cache {
   }
 
   /** Registers cache actor on this node for other nodes to use. */
-  def registerRemote(cacheName: String, limit: Int) {
-    Actor.remote.register(remoteActorName(cacheName), Actor.actorOf(new CacheActor(limit)))
+  def registerRemote(cacheName: String, limit: Int) = {
+    val ref = Actor.actorOf(new CacheActor(limit))
+    ref.start()
+    Actor.remote.register(remoteActorName(cacheName), ref)
+    new CacheActorRefApi(ref)
   }
 
   /** Gets cache actor from remote nodes. */
   def getRemote(cacheName: String, host: String, port: Int) = {
     val ref = Actor.remote.actorFor(remoteActorName(cacheName), host, port)
-    ref.start()
     new CacheActorRefApi(ref)
   }
 
-  def getDistributed(cachaName: String) = {
-    null
+  def getDistributed(cacheName: String, limit: Int) = {
+    val ref = Actor.actorOf(new DistributedCacheActor(cacheName, limit))
+    ref.start()
+    new CacheActorRefApi(ref)
   }
 
   /** Avoids naming conflict with other part of the system. */

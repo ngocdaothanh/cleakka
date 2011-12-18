@@ -3,7 +3,7 @@ package akka.cache
 import akka.actor.ActorRef
 import akka.dispatch.Future
 
-class CacheActorRefApi(ref: ActorRef) {
+class CacheActorRefApi(val ref: ActorRef) {
   import Msg._
 
   def containsKey(key: Any) =
@@ -26,6 +26,6 @@ class CacheActorRefApi(ref: ActorRef) {
     ref ! RemoveAll
   }
 
-  def stats =
-    (ref ? Stats).asInstanceOf[Future[Stats]]
+  def getStats =
+    (ref ? GetStats).asInstanceOf[Future[Stats]]
 }

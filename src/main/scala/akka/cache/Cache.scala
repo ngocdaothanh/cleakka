@@ -145,12 +145,12 @@ class Cache(val limit: Int) {
     used           = 0
   }
 
-  def stats = {
-    val cacheHitPercentage  = if (cacheGets > 0) 1.0 * cacheHits   / cacheGets else -1
-    val cacheMissPercentage = if (cacheGets > 0) 1.0 * cacheMisses / cacheGets else -1
+  def getStats = {
+    val cacheHitPercentage  = if (cacheGets > 0) 1.0 * cacheHits   / cacheGets else 0
+    val cacheMissPercentage = if (cacheGets > 0) 1.0 * cacheMisses / cacheGets else 0
 
-    val averagePutMillis    = if (cachePuts > 0) totalePutMillis   / cachePuts else -1
-    val averageGetMillis    = if (cacheGets > 0) totalGetMillis    / cacheGets else -1
+    val averagePutMillis    = if (cachePuts > 0) totalePutMillis   / cachePuts else 0
+    val averageGetMillis    = if (cacheGets > 0) totalGetMillis    / cacheGets else 0
 
     new Stats(
       cachePuts,
