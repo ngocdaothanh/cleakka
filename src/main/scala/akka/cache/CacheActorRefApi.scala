@@ -22,7 +22,7 @@ class CacheActorRefApi(ref: ActorRef) {
   def remove(key: Any) =
     (ref ? Remove(key)).asInstanceOf[Future[Boolean]]
 
-  def removeAll {
+  def removeAll() {
     ref ! RemoveAll
   }
 
