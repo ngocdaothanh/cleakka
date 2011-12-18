@@ -35,10 +35,17 @@ Conditional put:
     (mark1 + mark2) / 2  // The result will be put in cache if absent
   }
 
-Time to live:
+"putIfAbsent2" is used instead of just "putIfAbsent" is to avoid error:
+multiple overloaded alternatives of method putIfAbsent define default arguments
+More information:
+http://stackoverflow.com/questions/4652095/why-does-the-scala-compiler-disallow-overloaded-methods-with-default-arguments
+
+Time to live: use an additional akka.util.Duration parameter
 
   import akka.util.duration._
-  cache.put("John", 83, 5.seconds)
+  cache.put("John", 83, 1.second)
+  cache.putIfAbsent("Jack", 73, 5.seconds)
+  cache.putIfAbsent2("Mac", 1.minute) { ... }
 
 Normally used: second, seconds, minute, minutes, hour, hours, day, days
 
