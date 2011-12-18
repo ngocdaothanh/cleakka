@@ -9,7 +9,7 @@ object Cache {
   val WATERMARK = 0.75
 }
 
-/** This is not thread-safe. For thread-safe use CacheActor instead. */
+/** Non thread-safe local cache. For thread-safe use CacheActor instead. */
 class Cache(val limit: Int) {
   import Cache._
 

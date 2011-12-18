@@ -5,16 +5,21 @@ import akka.event.EventHandler
 import Actor._
 
 object RemoteCacheActor {
-  remote.start("localhost", 2552)
-  remote.register("r", actorOf(new RemoteCacheActor))
+  def register(cacheName: String, limit: Int) {
+    remote.register(actorName(cacheName), actorOf(new RemoteCacheActor(limit)))
+  }
+
+  def actorName(cacheName: String) =
+    classOf[RemoteCacheActor].getName + "-" + cacheName
 }
 
-class RemoteCacheActor extends Actor {
+/** Decides where to store the cache based on Ketama algorithm. */
+class RemoteCacheActor(limit: Int) extends Actor {
   private var local:   ActorRef        = _
   private var remotes: Array[ActorRef] = _
 
   override def preStart() {
-    local = actorOf(new CacheActor(10240))
+    local = actorOf(new CacheActor(limit))
     local.start()
   }
 
