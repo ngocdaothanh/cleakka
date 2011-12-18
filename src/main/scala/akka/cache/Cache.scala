@@ -2,11 +2,8 @@ package akka.cache
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
 import java.nio.ByteBuffer
-import java.util.concurrent.TimeUnit.MILLISECONDS
 
 import scala.collection.mutable.{HashMap => MMap}
-
-import akka.util.Duration
 
 object Cache {
   val WATERMARK = 0.75
@@ -34,7 +31,7 @@ class Cache(val limit: Int) {
 
   def containsKey(key: Any) = data.isDefinedAt(key)
 
-  def put(key: Any, value: Any, ttl: Duration = Duration.Inf) {
+  def put(key: Any, value: Any, ttlSecs: Int = 0) {
     val t1 = System.currentTimeMillis
 
     val lastEntryo = data.get(key)
@@ -55,7 +52,7 @@ class Cache(val limit: Int) {
       val buffer = ByteBuffer.allocateDirect(bytes.length)
       buffer.put(bytes)
 
-      data(key)  = new Entry(buffer, ttl, t1)
+      data(key)  = new Entry(buffer, ttlSecs, (t1 / 1000).toInt)
       used      += size
       cachePuts += 1
     }
@@ -64,14 +61,14 @@ class Cache(val limit: Int) {
     totalePutMillis += t2 - t1
   }
 
-  def putIfAbsent(key: Any, value: Any, ttl: Duration = Duration.Inf): Boolean = {
+  def putIfAbsent(key: Any, value: Any, ttlSecs: Int = 0): Boolean = {
     data.get(key) match {
       case None =>
-        put(key, value, ttl)
+        put(key, value, ttlSecs)
         true
 
       case Some(entry) =>
-        entry.lastAccessed = System.currentTimeMillis
+        entry.lastAccessedSecs = (System.currentTimeMillis / 1000).toInt
         false
     }
   }
@@ -82,14 +79,14 @@ class Cache(val limit: Int) {
    *
    * http://stackoverflow.com/questions/4652095/why-does-the-scala-compiler-disallow-overloaded-methods-with-default-arguments
    */
-  def putIfAbsent2(key: Any, ttl: Duration = Duration.Inf)(f: => Any): Boolean = {
+  def putIfAbsent2(key: Any, ttlSecs: Int = 0)(f: => Any): Boolean = {
     data.get(key) match {
       case None =>
-        put(key, f, ttl)
+        put(key, f, ttlSecs)
         true
 
       case Some(entry) =>
-        entry.lastAccessed = System.currentTimeMillis
+        entry.lastAccessedSecs = (System.currentTimeMillis / 1000).toInt
         false
     }
   }
@@ -105,10 +102,10 @@ class Cache(val limit: Int) {
 
       case Some(entry) =>
         val buffer = entry.directByteBuffer
-        val dt     = t1 - entry.lastAccessed
-        if (entry.ttl > Duration(dt, MILLISECONDS)) {
-          cacheHits         += 1
-          entry.lastAccessed = t1
+        val dtSecs = t1 / 1000 - entry.lastAccessedSecs
+        if (entry.ttlSecs <= 0 || entry.ttlSecs > dtSecs) {
+          cacheHits             += 1
+          entry.lastAccessedSecs = (t1 / 1000).toInt
 
           buffer.rewind
           val bytes = new Array[Byte](buffer.capacity)

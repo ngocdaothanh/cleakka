@@ -1,19 +1,29 @@
 package akka.cache
 
 import akka.actor.Actor
-import akka.util.Duration
 
+// Use Int for now because akka.util.Duration is not serializable
+// java.io.NotSerializableException: akka.util.Duration$$anon$1
+// 0 = Duration.Inf
 case class ContainsKey(key: Any)
-case class Put(key: Any, value: Any, ttl: Duration = Duration.Inf)
-case class PutIfAbsent(key: Any, value: Any, ttl: Duration = Duration.Inf)
-case class PutIfAbsent2(key: Any, ttl: Duration = Duration.Inf)(f: => Any)
+case class Put(key: Any, value: Any, ttlSecs: Int = 0)
+case class PutIfAbsent(key: Any, value: Any, ttlSecs: Int = 0)
+case class PutIfAbsent2(key: Any, ttlSecs: Int = 0)(f: => Any)
 case class Get[T](key: Any)
 case class Remove(key: Any)
 case class RemoveAll()
 case class Stats()
 
 class CacheActor(val limit: Int) extends Actor {
-  private val cache = new Cache(limit)
+  private var cache: Cache = _
+
+  override def preStart() {
+    cache = new Cache(limit)
+  }
+
+  override def postStop() {
+    cache.removeAll()
+  }
 
   def receive = {
     case ContainsKey(key) =>
