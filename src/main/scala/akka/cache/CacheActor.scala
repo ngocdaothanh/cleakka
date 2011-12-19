@@ -5,7 +5,7 @@ import akka.event.EventHandler
 import Actor._
 
 /** Thread-safe local cache. */
-class CacheActor(val limit: Int) extends Actor {
+class CacheActor(val limit: Long) extends Actor {
   import Msg._
 
   private var cache: Cache = _

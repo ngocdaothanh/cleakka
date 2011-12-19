@@ -13,18 +13,18 @@ object Cache {
 }
 
 /** Non thread-safe local cache. For thread-safe use CacheActor instead. */
-class Cache(val limit: Int) {
+class Cache(val limit: Long) {
   private val data = new MMap[Any, Entry]
-  private var used = 0
+  private var used = 0L  // Important, must be Long, not Int
 
-  private var cachePuts:       Long = 0
-  private var cacheGets:       Long = 0
-  private var cacheHits:       Long = 0
-  private var cacheMisses:     Long = 0
-  private var cacheRemovals:   Long = 0
+  private var cachePuts       = 0L
+  private var cacheGets       = 0L
+  private var cacheHits       = 0L
+  private var cacheMisses     = 0L
+  private var cacheRemovals   = 0L
 
-  private var totalGetMillis:  Long = 0
-  private var totalePutMillis: Long = 0
+  private var totalGetMillis  = 0L
+  private var totalePutMillis = 0L
 
   //----------------------------------------------------------------------------
 

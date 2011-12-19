@@ -13,13 +13,16 @@ Cleaner Akka:
 Local cache
 -----------
 
-Create a cache with limit 10 MB (max is Int.MaxValue, 2GB):
+Create a cache with 10 MB limit:
 
   val cache = akka.cache.createLocal(10 * 1024 * 1024)
 
 Put:
 
   cache.put("John", 83)
+
+Limit of each serialized value is Int.MaxValue, 2 GB.
+Limit of the whole cache is MaxDirectMemorySize, see below.
 
 Get:
 
@@ -51,7 +54,7 @@ enable remote mode. For example:
 
   akka.actor.Actor.remote.start("localhost", 2552)
 
-Register 10 MB cache:
+Register a cache with 10 MB limit:
 
   akka.cache.registerRemote("my cache", 10 * 1024 * 1024)
 
@@ -73,21 +76,21 @@ For example, we config a cluster of 3 nodes:
 Node 1:
 
   distributed {
-    local = "localhost:2552"
+    clientModeOnly = false
     remotes = ["localhost:2553", "localhost:2554"]
   }
 
 Node 2:
 
   distributed {
-    local = "localhost:2553"
+    clientModeOnly = false
     remotes = ["localhost:2552", "localhost:2554"]
   }
 
 Node 3:
 
   distributed {
-    local = "localhost:2554"
+    clientModeOnly = false
     remotes = ["localhost:2552", "localhost:2553"]
   }
 
@@ -130,8 +133,15 @@ Otherwise you are likely to hit an OutOfMemoryError when using large cache.
 More info
 ---------
 
+To stop Akka:
+
+  import akka.actor.Actors
+  Actors.registry.shutdownAll()
+  Actors.remote.shutdown()
+
 * Off-heap cache: http://www.quora.com/How-does-BigMemory-hide-objects-from-the-Java-garbage-collector
 * JCache: https://github.com/jsr107/jsr107spec
 * sun.misc.Unsafe: http://stackoverflow.com/questions/5574241/interesting-uses-of-sun-misc-unsafe
 * sun.misc.Cleaner: http://groups.google.com/group/netty/browse_thread/thread/3be7f573384af977
 * Ketama algorithm: http://www.last.fm/user/RJ/journal/2007/04/10/rz_libketama_-_a_consistent_hashing_algo_for_memcache_clients
+* http://stackoverflow.com/questions/8550421/how-to-properly-shutdown-jvm-with-akka-remote-actor

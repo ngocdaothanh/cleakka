@@ -5,10 +5,11 @@ import java.net.InetSocketAddress
 import akka.actor.{Actor, ActorRef}
 import akka.dispatch.Future
 import akka.event.EventHandler
+import akka.remoteinterface._
 import Actor._
 
 /** Decides where to store the cache based on Ketama algorithm. */
-class DistributedCacheActor(cacheName: String, limit: Int) extends Actor {
+class DistributedCacheActor(cacheName: String, limit: Long, config: DistributedConfig = DistributedConfig.default) extends Actor {
   import Msg._
 
   private var ketama:  Ketama        = _
@@ -24,26 +25,31 @@ class DistributedCacheActor(cacheName: String, limit: Int) extends Actor {
     }
 
   override def preStart() {
-    val addresses1 = DistributedConfig.remotes
-    val addresses2 =
-      if (DistributedConfig.local)
-        addresses1 :+ remote.address
-      else
-        addresses1
+    val addresses1 = config.remotes
+    val addresses2 = if (config.clientModeOnly) addresses1 else addresses1 :+ remote.address
     val addresses3 = addresses2.sortWith(compareInetSocketAddress _)
     ketama = new Ketama(addresses3)
 
     allRefs = addresses3.map { case address =>
-      if (DistributedConfig.local && remote.address == address)
-        registerRemote(cacheName, limit).ref
-      else
+      if (config.clientModeOnly && remote.address != address)
         getRemote(cacheName, address.getHostName, address.getPort).ref
+      else
+        registerRemote(cacheName, limit).ref
     }
+
+    val listener = actorOf(new Actor {
+      def receive = {
+        case RemoteServerClientConnected(server, clientAddress)    => println()
+        case RemoteServerClientDisconnected(server, clientAddress) => //... act upon client disconnection
+        case RemoteServerClientClosed(server, clientAddress)       => //... act upon client connection close
+        case RemoteServerWriteFailed(request, cause, server, clientAddress) => //... act upon server write failure
+      }
+    }).start()
   }
 
   override def postStop() {
     // Stop local actor if used
-    if (DistributedConfig.local) {
+    if (!config.clientModeOnly) {
       for ((address, i) <- ketama.addresses.zipWithIndex) {
         if (remote.address == address) {
           allRefs(i).stop()
