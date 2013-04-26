@@ -1,4 +1,4 @@
-https://github.com/ngocdaothanh/cleakka.git
+package cleakka
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
 import java.nio.ByteBuffer

@@ -1,4 +1,4 @@
-package akka
+package cleakka
 
 import akka.actor.{ActorSystem, Props}
 
