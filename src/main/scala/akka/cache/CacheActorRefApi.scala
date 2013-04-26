@@ -1,31 +1,37 @@
 package akka.cache
 
+import scala.concurrent.Future
+import scala.concurrent.duration._
+
 import akka.actor.ActorRef
-import akka.dispatch.Future
+import akka.pattern.ask
+import akka.util.Timeout
 
 class CacheActorRefApi(val ref: ActorRef) {
   import Msg._
 
+  private[this] implicit val timeout = Timeout(5.seconds)
+
   def containsKey(key: Any) =
-    (ref ? ContainsKey(key)).asInstanceOf[Future[Boolean]]
+    ask(ref, ContainsKey(key)).mapTo[Boolean]
 
   def put(key: Any, value: Any, ttlSecs: Int = 0) {
     ref ! Put(key, value, ttlSecs)
   }
 
   def putIfAbsent(key: Any, value: Any, ttlSecs: Int = 0) =
-    (ref ? PutIfAbsent(key, value, ttlSecs)).asInstanceOf[Future[Boolean]]
+    ask(ref, PutIfAbsent(key, value, ttlSecs)).mapTo[Boolean]
 
   def get(key: Any) =
-    ref ? Get(key)
+    ask(ref, Get(key))
 
   def remove(key: Any) =
-    (ref ? Remove(key)).asInstanceOf[Future[Boolean]]
+    ask(ref, Remove(key)).mapTo[Boolean]
 
   def removeAll() {
     ref ! RemoveAll
   }
 
   def getStats =
-    (ref ? GetStats).asInstanceOf[Future[Stats]]
+    ask(ref, GetStats).mapTo[Stats]
 }

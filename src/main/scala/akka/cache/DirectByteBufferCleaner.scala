@@ -1,6 +1,7 @@
 package akka.cache
 
 import java.nio.ByteBuffer
+import scala.util.control.NonFatal
 
 /**
  * Frees memory of direct buffer allocated by ByteBuffer.allocateDirect
@@ -18,7 +19,7 @@ object DirectByteBufferCleaner {
       method.setAccessible(true)
       Some(method)
     } catch {
-      case _ => None
+      case NonFatal(e) => None
     }
   }
 
@@ -28,7 +29,7 @@ object DirectByteBufferCleaner {
       val method = klass.getDeclaredMethod("clean")
       Some(method)
     } catch {
-      case _ => None
+      case NonFatal(e) => None
     }
   }
 

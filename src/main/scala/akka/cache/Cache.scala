@@ -4,6 +4,7 @@ import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, 
 import java.nio.ByteBuffer
 
 import scala.collection.mutable.{HashMap => MMap}
+import scala.util.control.NonFatal
 
 import akka.actor.Actor
 import Actor._
@@ -204,7 +205,7 @@ class Cache(val limit: Long) {
       bais.close
       Some(value.asInstanceOf[T])
     } catch {
-      case _ => None
+      case NonFatal(e) => None
     }
   }
 }

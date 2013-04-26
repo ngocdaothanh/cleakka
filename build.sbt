@@ -1,18 +1,19 @@
 organization := "tv.cntt"
 
-name         := "akka-cache"
+name         := "cleanerakka"
 
 version      := "1.0-SNAPSHOT"
 
-scalaVersion := "2.9.1"
+scalaVersion := "2.10.1"
 
 scalacOptions ++= Seq(
   "-deprecation",
+  "-feature",
   "-unchecked"
 )
 
-resolvers += "Typesafe" at "http://repo.typesafe.com/typesafe/releases/"
+libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.1.2"
 
-libraryDependencies += "se.scalablesolutions.akka" % "akka-actor" % "1.3-RC4"
+libraryDependencies += "com.typesafe.akka" %% "akka-remote" % "2.1.2"
 
-libraryDependencies += "se.scalablesolutions.akka" % "akka-remote" % "1.3-RC4"
+libraryDependencies += "com.typesafe.akka" %% "akka-cluster-experimental" % "2.1.2"
