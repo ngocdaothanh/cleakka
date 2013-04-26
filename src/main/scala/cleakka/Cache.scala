@@ -1,48 +1,51 @@
 package cleakka
 
-import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
 import java.nio.ByteBuffer
+import scala.util.control.Exception.allCatch
+
+import com.esotericsoftware.kryo.io.{ByteBufferInputStream, Input}
 
 import scala.collection.mutable.{HashMap => MMap}
 import scala.util.control.NonFatal
 
-import akka.actor.Actor
-import Actor._
+import com.twitter.chill.KryoBijection
 
 object Cache {
   val WATERMARK = 0.75
 }
 
 /** Non thread-safe local cache. For thread-safe use CacheActor instead. */
-class Cache(val limit: Long) {
-  private val data = new MMap[Any, Entry]
-  private var used = 0L  // Important, must be Long, not Int
+class Cache(val limitInMB: Long) {
+  private[this] val limit = limitInMB * 1024 * 1024
 
-  private var cachePuts       = 0L
-  private var cacheGets       = 0L
-  private var cacheHits       = 0L
-  private var cacheMisses     = 0L
-  private var cacheRemovals   = 0L
+  private[this] val data = new MMap[Any, Entry]
+  private[this] var used = 0L  // Important, must be Long, not Int
 
-  private var totalGetMillis  = 0L
-  private var totalePutMillis = 0L
+  private[this] var cachePuts       = 0L
+  private[this] var cacheGets       = 0L
+  private[this] var cacheHits       = 0L
+  private[this] var cacheMisses     = 0L
+  private[this] var cacheRemovals   = 0L
+
+  private[this] var totalGetMillis  = 0L
+  private[this] var totalPutMillis  = 0L
 
   //----------------------------------------------------------------------------
 
-  def containsKey(key: Any) = data.isDefinedAt(key)
+  def isDefinedAt(key: Any) = data.isDefinedAt(key)
 
-  def put(key: Any, value: Any, ttlSecs: Int = 0) {
-    val t1 = System.currentTimeMillis
+  def put(key: Any, value: AnyRef, ttlSecs: Int = 0) {
+    val t1Ms = System.currentTimeMillis()
+    val t1S  = (t1Ms / 1000).toInt
 
-    val lastEntryo = data.get(key)
-    if (lastEntryo.isDefined) {
-      val buffer = lastEntryo.get.directByteBuffer
+    data.get(key).foreach { lastEntry =>
+      val buffer = lastEntry.directByteBuffer
       data.remove(key)
       used -= buffer.capacity
       DirectByteBufferCleaner.clean(buffer)
     }
 
-    val bytes     = serialize(value)
+    val bytes     = KryoBijection(value)
     val size      = bytes.length
     val remaining = limit - used
     var fit       = size <= remaining
@@ -52,47 +55,46 @@ class Cache(val limit: Long) {
       val buffer = ByteBuffer.allocateDirect(bytes.length)
       buffer.put(bytes)
 
-      data(key)  = new Entry(buffer, ttlSecs, (t1 / 1000).toInt)
+      data(key)  = new Entry(buffer, ttlSecs, t1S)
       used      += size
       cachePuts += 1
     }
 
-    val t2           = System.currentTimeMillis
-    totalePutMillis += t2 - t1
+    val t2Ms        = System.currentTimeMillis()
+    totalPutMillis += t2Ms - t1Ms
   }
 
-  def putIfAbsent(key: Any, value: Any, ttlSecs: Int = 0): Boolean = {
+  def putIfAbsent(key: Any, value: AnyRef): Boolean = {
+    putIfAbsent(key, value, 0)
+  }
+
+  def putIfAbsent(key: Any, value: AnyRef, ttlSecs: Int): Boolean = {
     data.get(key) match {
       case None =>
         put(key, value, ttlSecs)
         true
 
       case Some(entry) =>
-        entry.lastAccessedSecs = (System.currentTimeMillis / 1000).toInt
+        entry.lastAccessedSecs = (System.currentTimeMillis() / 1000).toInt
         false
     }
   }
 
-  /**
-   * Named "putIfAbsent2" to avoid error:
-   * multiple overloaded alternatives of method putIfAbsent define default arguments
-   *
-   * http://stackoverflow.com/questions/4652095/why-does-the-scala-compiler-disallow-overloaded-methods-with-default-arguments
-   */
-  def putIfAbsent2(key: Any, ttlSecs: Int = 0)(f: => Any): Boolean = {
+  def putIfAbsent(key: Any, ttlSecs: Int = 0)(f: => AnyRef): Boolean = {
     data.get(key) match {
       case None =>
         put(key, f, ttlSecs)
         true
 
       case Some(entry) =>
-        entry.lastAccessedSecs = (System.currentTimeMillis / 1000).toInt
+        entry.lastAccessedSecs = (System.currentTimeMillis() / 1000).toInt
         false
     }
   }
 
   def get[T](key: Any): Option[T] = {
-    val t1 = System.currentTimeMillis
+    val t1Ms = System.currentTimeMillis()
+    val t1S  = (t1Ms / 1000).toInt
 
     cacheGets += 1
     val ret = data.get(key) match {
@@ -102,15 +104,18 @@ class Cache(val limit: Long) {
 
       case Some(entry) =>
         val buffer = entry.directByteBuffer
-        val dtSecs = t1 / 1000 - entry.lastAccessedSecs
+        val dtSecs = t1S - entry.lastAccessedSecs
         if (entry.ttlSecs <= 0 || entry.ttlSecs > dtSecs) {
           cacheHits             += 1
-          entry.lastAccessedSecs = (t1 / 1000).toInt
+          entry.lastAccessedSecs = t1S
 
-          buffer.rewind
-          val bytes = new Array[Byte](buffer.capacity)
-          buffer.get(bytes)
-          deserialize(bytes)
+          buffer.rewind()
+
+          val kryo  = KryoBijection.getKryo
+          val bbis  = new ByteBufferInputStream(buffer)
+          val input = new Input(bbis)
+          val opt   = allCatch.opt { kryo.readClassAndObject(input) }
+          opt.asInstanceOf[Option[T]]
         } else {
           cacheMisses += 1
           data.remove(key)
@@ -120,8 +125,8 @@ class Cache(val limit: Long) {
         }
     }
 
-    val t2 = System.currentTimeMillis
-    totalGetMillis += t2 - t1
+    val t2Ms = System.currentTimeMillis
+    totalGetMillis += t2Ms - t1Ms
 
     ret
   }
@@ -140,17 +145,21 @@ class Cache(val limit: Long) {
   }
 
   def removeAll() {
-    for (entry <- data.values) DirectByteBufferCleaner.clean(entry.directByteBuffer)
+    val it = data.iterator
+    while (it.hasNext) {
+      val entry = it.next()._2
+      DirectByteBufferCleaner.clean(entry.directByteBuffer)
+    }
     data.clear()
     cacheRemovals += 1
     used           = 0
   }
 
-  def getStats = {
+  def stats = {
     val cacheHitPercentage  = if (cacheGets > 0) 1.0 * cacheHits   / cacheGets else 0
     val cacheMissPercentage = if (cacheGets > 0) 1.0 * cacheMisses / cacheGets else 0
 
-    val averagePutMillis    = if (cachePuts > 0) totalePutMillis   / cachePuts else 0
+    val averagePutMillis    = if (cachePuts > 0) totalPutMillis    / cachePuts else 0
     val averageGetMillis    = if (cacheGets > 0) totalGetMillis    / cacheGets else 0
 
     new Stats(
@@ -169,43 +178,24 @@ class Cache(val limit: Long) {
 
   /** @return true if bytes of "size" can be put in cache */
   private def evictUntilUnderWatermakAndFit(size: Int): Boolean = {
-    for (key <- data.keys) {
-      val ratio     = 1.0 * used / limit
-      val remaining = limit - used
-      if (ratio > Cache.WATERMARK || remaining < size) {
-        val entry  = data.remove(key).get
-        val buffer = entry.directByteBuffer
-        used      -= buffer.capacity
-        DirectByteBufferCleaner.clean(buffer)
-      } else {
-        return true  // break the loop
-      }
+    val it = data.iterator
+
+    var ratio     = 1.0 * used / limit
+    var remaining = limit - used
+    var done      = !it.hasNext || (ratio <= Cache.WATERMARK && remaining >= size)
+    while (!done) {
+      val (key, entry) = it.next()
+      data.remove(key)
+
+      val buffer = entry.directByteBuffer
+      DirectByteBufferCleaner.clean(buffer)
+
+      used     -= buffer.capacity
+      ratio     = 1.0 * used / limit
+      remaining = limit - used
+      done      = !it.hasNext || (ratio <= Cache.WATERMARK && remaining >= size)
     }
 
-    val remaining = limit - used
     remaining >= size
-  }
-
-  private def serialize(value: Any): Array[Byte] = {
-    val baos  = new ByteArrayOutputStream
-    val oos   = new ObjectOutputStream(baos)
-    oos.writeObject(value)
-    val bytes = baos.toByteArray
-    oos.close
-    baos.close
-    bytes
-  }
-
-  private def deserialize[T](bytes: Array[Byte]): Option[T] = {
-    try {
-      val bais  = new ByteArrayInputStream(bytes)
-      val ois   = new ObjectInputStream(bais)
-      val value = ois.readObject
-      ois.close
-      bais.close
-      Some(value.asInstanceOf[T])
-    } catch {
-      case NonFatal(e) => None
-    }
   }
 }

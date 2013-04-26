@@ -1,6 +1,6 @@
 package cleakka.test
 
-import akka.cache._
+import cleakka._
 
 object Benchmark {
   private val LOOP_COUNT = 1000000
@@ -11,14 +11,14 @@ object Benchmark {
 
     var i = 0
     while (i < LOOP_COUNT) {
-      testDirectByteBuffer
+      testDirectByteBuffer()
       i += 1
     }
     val t2 = System.currentTimeMillis
     println("" + (t2 - t1) + " [ms]")
   }
 
-  private def testDirectByteBuffer {
+  private def testDirectByteBuffer() {
     val b = java.nio.ByteBuffer.allocateDirect(ARRAY_SIZE)
     b.put(new Array[Byte](ARRAY_SIZE))
     DirectByteBufferCleaner.clean(b)

@@ -18,7 +18,7 @@ class CacheActor(val limit: Long) extends Actor {
 
   def receive = {
     case ContainsKey(key) =>
-      sender ! cache.containsKey(key)
+      sender ! cache.isDefinedAt(key)
 
     case Put(key, value, ttlSecs) =>
       cache.put(key, value, ttlSecs)
@@ -36,7 +36,7 @@ class CacheActor(val limit: Long) extends Actor {
       cache.removeAll()
 
     case GetStats =>
-      sender ! cache.getStats
+      sender ! cache.stats
 
     case other =>
       log.warning("Unknown message received: {}", other)

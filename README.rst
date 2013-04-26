@@ -30,7 +30,7 @@ Create a cache with 10 MB limit:
 
 ::
 
-  val cache = akka.cache.createLocal(10 * 1024 * 1024)
+  val cache = akka.cache.createLocal(10)
 
 Put:
 
@@ -86,7 +86,7 @@ Register a cache with 10 MB limit:
 
 ::
 
-  akka.cache.registerRemote("my cache", 10 * 1024 * 1024)
+  akka.cache.registerRemote("my cache", 10)
 
 Step 2: On the cache client
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -144,27 +144,27 @@ Node 1:
 ::
 
   akka.actor.Actor.remote.start("localhost", 2552)
-  akka.cache.registerRemote("my cache", 10 * 1024 * 1024)
+  akka.cache.registerRemote("my cache", 10)
 
 Node 2:
 
 ::
 
   akka.actor.Actor.remote.start("localhost", 2553)
-  akka.cache.registerRemote("my cache", 10 * 1024 * 1024)
+  akka.cache.registerRemote("my cache", 10)
 
 Node 3:
 
 ::
 
   akka.actor.Actor.remote.start("localhost", 2554)
-  akka.cache.registerRemote("my cache", 10 * 1024 * 1024)
+  akka.cache.registerRemote("my cache", 10)
 
 Step 3: Access the cache
 
 ::
 
-  val cache = akka.cache.getDistributed("my cache", 10 * 1024 * 1024)
+  val cache = akka.cache.getDistributed("my cache", 10)
   cache.put("John", 83)
   cache.get("John").get  // Same as local and remote cache above
 

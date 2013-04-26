@@ -15,11 +15,11 @@ class CacheActorRefApi(val ref: ActorRef) {
   def containsKey(key: Any) =
     ask(ref, ContainsKey(key)).mapTo[Boolean]
 
-  def put(key: Any, value: Any, ttlSecs: Int = 0) {
+  def put(key: Any, value: AnyRef, ttlSecs: Int = 0) {
     ref ! Put(key, value, ttlSecs)
   }
 
-  def putIfAbsent(key: Any, value: Any, ttlSecs: Int = 0) =
+  def putIfAbsent(key: Any, value: AnyRef, ttlSecs: Int = 0) =
     ask(ref, PutIfAbsent(key, value, ttlSecs)).mapTo[Boolean]
 
   def get(key: Any) =
