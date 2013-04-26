@@ -1,4 +1,4 @@
-package akka.cache
+package cleakka
 
 object Stats {
   def aggregate(xs: Seq[Stats]): Stats = {

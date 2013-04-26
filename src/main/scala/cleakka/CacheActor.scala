@@ -1,4 +1,4 @@
-package akka.cache
+package cleakka
 
 import akka.actor.Actor
 import akka.event.Logging

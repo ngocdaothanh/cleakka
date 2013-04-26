@@ -1,4 +1,4 @@
-package akka.cache
+package cleakka
 
 import java.io.File
 import java.net.InetSocketAddress

@@ -1,7 +1,7 @@
-Cleaner Akka:
+Cleakka (Cleaner + Akka):
 
-* is a Scala cache library based on Akka
-* uses JVM direct memory to store cache data in aff-JVM-heap memory,
+* is a cluster memory cache based on sun.misc.Cleaner and Akka
+* uses JVM direct memory to store cache data in off-heap memory,
   this minimizes GC delay
 * frees memory immediately when cache entry is removed,
   if sun.misc.Cleaner exists,
@@ -176,6 +176,7 @@ To stop Akka:
 ::
 
   import akka.actor.Actors
+
   Actors.registry.shutdownAll()
   Actors.remote.shutdown()
 

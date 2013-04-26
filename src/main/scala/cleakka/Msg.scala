@@ -1,4 +1,4 @@
-package akka.cache
+package cleakka
 
 sealed trait Msg
 

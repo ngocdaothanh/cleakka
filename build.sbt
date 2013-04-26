@@ -1,6 +1,6 @@
 organization := "tv.cntt"
 
-name         := "cleanerakka"
+name         := "cleakka"
 
 version      := "1.0-SNAPSHOT"
 

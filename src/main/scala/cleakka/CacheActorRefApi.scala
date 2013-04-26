@@ -1,4 +1,4 @@
-package akka.cache
+package cleakka
 
 import scala.concurrent.Future
 import scala.concurrent.duration._

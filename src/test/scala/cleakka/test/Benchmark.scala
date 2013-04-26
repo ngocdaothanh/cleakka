@@ -1,4 +1,4 @@
-package akka.cache.test
+package cleakka.test
 
 import akka.cache._
 
