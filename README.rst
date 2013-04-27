@@ -87,11 +87,20 @@ On cache client node:
 ::
 
   val client = cleakka.CacheClient.connect("myCache", "localhost", 2552)
-  client.put(key, value)
-  val future: Future[MyType] = client.get[MyType](key)
+
+To connect to the cache server on the current node:
+
+::
+
+  val client = cleakka.CacheClient.connect("myCache")
 
 The client APIs are similar to those of local cache. The only different is the
-results are ``scala.concurrent.Future``s.
+results are ``scala.concurrent.Future``s:
+
+::
+
+  client.put(key, value)
+  val future: Future[MyType] = client.get[MyType](key)
 
 To stop the server:
 

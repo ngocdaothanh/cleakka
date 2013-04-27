@@ -8,6 +8,11 @@ import akka.pattern.ask
 import akka.util.Timeout
 
 object CacheClient {
+  def connect(cacheName: String): CacheClient = {
+    val serverRef = CacheServer.lookUp(cacheName)
+    new CacheClient(serverRef)
+  }
+
   def connect(cacheName: String, host: String, port: Int): CacheClient = {
     val serverRef = CacheServer.lookUp(cacheName, host, port)
     new CacheClient(serverRef)
