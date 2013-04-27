@@ -1,7 +1,16 @@
 package cleakka
 
 import java.net.URLEncoder
-import akka.actor.{Actor, ActorRef, ActorSystem, Props}
+import scala.concurrent.Future
+import scala.concurrent.duration._
+
+import akka.actor.{
+  Actor, ActorRef, ActorSystem, Props,
+  ActorSelection, Identify, ActorIdentity
+}
+import akka.actor.ActorDSL._
+import akka.pattern.ask
+import akka.util.Timeout
 
 object CacheServer {
   // TODO: Support scala.concurrent.duration.Duration
@@ -20,22 +29,42 @@ object CacheServer {
 
   private[this] val SYSTEM_NAME = "cleanerakka"
 
-  private[this] val system = ActorSystem(SYSTEM_NAME)
+  private[this] implicit val system  = ActorSystem(SYSTEM_NAME)
+  private[this] implicit val timeout = Timeout(5.seconds)
 
   def start(cacheName: String, limitInMB: Long): ActorRef = {
-    system.actorOf(Props(new CacheServer(limitInMB)), escapeActorName(cacheName))
+    system.actorOf(Props(classOf[CacheServer], limitInMB), escapeActorName(cacheName))
   }
 
-  def connect(cacheName: String): ActorRef = {
-    system.actorFor("/user/" + escapeActorName(cacheName))
+  def connect(cacheName: String): Future[Option[ActorRef]] = {
+    val path = "/user/" + escapeActorName(cacheName)
+    val sel  = system.actorSelection(path)
+    actorSelection2ActorRef(sel)
   }
 
-  def connect(cacheName: String, host: String, port: Int): ActorRef = {
+  def connect(cacheName: String, host: String, port: Int): Future[Option[ActorRef]] = {
     val path = "akka://" + SYSTEM_NAME + "@" + host + ":" + port + "/user/" + escapeActorName(cacheName)
-    system.actorFor(path)
+    val sel  = system.actorSelection(path)
+    actorSelection2ActorRef(sel)
   }
 
   private def escapeActorName(cacheName: String) = URLEncoder.encode(cacheName, "UTF-8")
+
+  private def actorSelection2ActorRef(sel: ActorSelection): Future[Option[ActorRef]] = {
+    val tmpRef = actor(new Act {
+      var asker: ActorRef = _
+      become {
+        case "ask" =>
+          asker = sender
+          sel ! new Identify("dummy")
+
+        case ActorIdentity(_, opt) =>
+          asker ! opt
+          context.stop(self)
+      }
+    })
+    ask(tmpRef, "ask").mapTo[Option[ActorRef]]
+  }
 }
 
 /** An actor that wraps Cache. */

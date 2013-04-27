@@ -1,6 +1,7 @@
 package cleakka
 
 import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 import akka.actor.{ActorRef, PoisonPill}
@@ -8,14 +9,14 @@ import akka.pattern.ask
 import akka.util.Timeout
 
 object CacheClient {
-  def connect(cacheName: String): CacheClient = {
-    val serverRef = CacheServer.connect(cacheName)
-    new CacheClient(serverRef)
+  def connect(cacheName: String): Future[Option[CacheClient]] = {
+    val future = CacheServer.connect(cacheName)
+    future.map { opt => opt.map { serverRef => new CacheClient(serverRef) } }
   }
 
-  def connect(cacheName: String, host: String, port: Int): CacheClient = {
-    val serverRef = CacheServer.connect(cacheName, host, port)
-    new CacheClient(serverRef)
+  def connect(cacheName: String, host: String, port: Int): Future[Option[CacheClient]] = {
+    val future = CacheServer.connect(cacheName, host, port)
+    future.map { opt => opt.map { serverRef => new CacheClient(serverRef) } }
   }
 }
 
