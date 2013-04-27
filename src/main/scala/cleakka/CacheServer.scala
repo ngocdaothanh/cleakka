@@ -1,5 +1,6 @@
 package cleakka
 
+import java.net.URLEncoder
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 
 object CacheServer {
@@ -22,16 +23,15 @@ object CacheServer {
   private[this] val system = ActorSystem(SYSTEM_NAME)
 
   def start(cacheName: String, limitInMB: Long): ActorRef = {
-    system.actorOf(Props(new CacheServer(limitInMB)), remoteActorName(cacheName))
+    system.actorOf(Props(new CacheServer(limitInMB)), escapeActorName(cacheName))
   }
 
   def lookUp(cacheName: String, host: String, port: Int): ActorRef = {
-    val path = "akka://" + SYSTEM_NAME + "@" + host + ":" + port + "/user/" + remoteActorName(cacheName)
+    val path = "akka://" + SYSTEM_NAME + "@" + host + ":" + port + "/user/" + escapeActorName(cacheName)
     system.actorFor(path)
   }
 
-  /** Avoids naming conflict with other part of the system. */
-  private def remoteActorName(cacheName: String) = getClass.getName + "-" + cacheName
+  private def escapeActorName(cacheName: String) = URLEncoder.encode(cacheName, "UTF-8")
 }
 
 /** An actor that wraps Cache. */
