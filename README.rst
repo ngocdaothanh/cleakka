@@ -1,14 +1,14 @@
 Cleakka (Cleaner + Akka):
 
-* is a cluster memory cache based on sun.misc.Cleaner and Akka
-* uses JVM direct memory to store cache data in off-heap memory,
+* is a memory cache based on sun.misc.Cleaner and Akka
+* uses JVM direct memory to store cache data in off-heap memory;
   this minimizes GC delay
 * frees memory immediately when cache entry is removed,
-  if sun.misc.Cleaner exists,
+  if sun.misc.Cleaner exists;
   this avoids OutOfMemoryError problem with direct memory
-* imitates some of JCache APIs
-* cache can be local, remote, or distributed
-* Ketama consistent hashing algorithm is used for distributed cache
+* cache can be local, remote (client-server model), or distributed
+  (not clustered, because cache servers do not need to be connected together);
+  distributed cache uses `consistent hashing <http://en.wikipedia.org/wiki/Consistent_hashing>`_
 
 Config MaxDirectMemorySize
 --------------------------
@@ -30,157 +30,102 @@ Create a cache with 10 MB limit:
 
 ::
 
-  val cache = akka.cache.createLocal(10)
+  val cache = new cleakka.LocalCache(10)
 
 Put:
 
 ::
 
-  cache.put("John", 83)
+  cache.put(any, anyRef)
 
-Limit of each serialized value is Int.MaxValue, 2 GB.
-Limit of the whole cache is MaxDirectMemorySize, see below.
+You can put anything serializable to the cache.
+`Twitter Chill <https://github.com/twitter/chill>`_, which is based on
+`Kryo <https://code.google.com/p/kryo/>`_ is used for (de)serializing.
 
 Get:
 
 ::
 
-  val future = cache.get("John")
-  future.get                      // => Some(83)
-  cache.get("Peter").get          // => None
+  val opt: Option[MyType] = cache.get[MyType](key)
 
 Remove:
 
 ::
 
-  cache.remove("John")
+  cache.remove(key)
   cache.removeAll()
 
 Conditional put:
 
 ::
 
-  cache.putIfAbsent("Jack", 73)
+  cache.putIfAbsent(key, value)
 
 Time to live:
 
 ::
 
-  cache.put("John", 83, 5)           // Entry will be invalidated after 5 secs
-  cache.putIfAbsent("Jack", 73, 10)  // 10 secs
+  cache.put(key, value, 5)           // 5 secs
+  cache.putIfAbsent(key, value, 10)  // 10 secs
 
 Remote cache
 ------------
 
-Step 1: On the cache server
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Start a CacheServer on a node and access it from another node.
 
-See http://akka.io/docs/akka/1.3-RC4/scala/remote-actors.html to know how to
-enable remote mode. For example:
+See http://doc.akka.io/docs/akka/2.1.2/scala/remoting.html to know how to
+enable Akka remoting.
 
-::
-
-  akka.actor.Actor.remote.start("localhost", 2552)
-
-Register a cache with 10 MB limit:
+On cache server node:
 
 ::
 
-  akka.cache.registerRemote("my cache", 10)
+  cleakka.CacheServer.start("myCache", 10)  // 10 MB cache
 
-Step 2: On the cache client
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+On cache client node:
 
 ::
 
-  val cache = akka.cache.getRemote("my cache", "localhost", 2552)
-  cache.put("John", 83)
-  cache.get("John").get  // Same as local cache above
+  val client = cleakka.CacheClient.connect("myCache", "localhost", 2552)
+  client.put(key, value)
+  val future: Future[MyType] = client.get[MyType](key)
+
+The client APIs are similar to those of local cache. The only different is the
+results are ``scala.concurrent.Future``s.
+
+To stop the server:
+
+::
+
+  client.stopServer()
 
 Distributed cache
 -----------------
 
-Cache will be distributed among multiple nodes using Ketama algoritm.
+Cache client uses `consistent hashing <http://en.wikipedia.org/wiki/Consistent_hashing>`
+algorithm to decide which node to put cache entries.
 
-Step 1: Config nodes to put cache data to in akka-cache.conf
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+On cache server nodes, start CacheServers as with remote cache.
 
-For example, we config a cluster of 3 nodes:
-
-Node 1:
+On cache client node:
 
 ::
 
-  distributed {
-    clientModeOnly = false
-    remotes = ["localhost:2553", "localhost:2554"]
-  }
+  val client = cleakka.ConsistentHashingCacheClient.connect("myCache", Seq(
+    ("localhost", 2553),
+    ("localhost", 2554)
+  ))
 
-Node 2:
+Then you can access the distributed cache just like with remote cache.
 
-::
-
-  distributed {
-    clientModeOnly = false
-    remotes = ["localhost:2552", "localhost:2554"]
-  }
-
-Node 3:
+You should listen to Akka node up and down events to update the server list:
 
 ::
 
-  distributed {
-    clientModeOnly = false
-    remotes = ["localhost:2552", "localhost:2553"]
-  }
+  client.removeServer("localhost", 2553)
+  client.addServer("localhost", 2555)
 
-Step 2: Enable remote mode on all nodes
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-See http://akka.io/docs/akka/1.3-RC4/scala/remote-actors.html
-
-Node 1:
-
-::
-
-  akka.actor.Actor.remote.start("localhost", 2552)
-  akka.cache.registerRemote("my cache", 10)
-
-Node 2:
-
-::
-
-  akka.actor.Actor.remote.start("localhost", 2553)
-  akka.cache.registerRemote("my cache", 10)
-
-Node 3:
-
-::
-
-  akka.actor.Actor.remote.start("localhost", 2554)
-  akka.cache.registerRemote("my cache", 10)
-
-Step 3: Access the cache
-
-::
-
-  val cache = akka.cache.getDistributed("my cache", 10)
-  cache.put("John", 83)
-  cache.get("John").get  // Same as local and remote cache above
-
-More info
----------
-
-To stop Akka:
-
-::
-
-  import akka.actor.Actors
-
-  Actors.registry.shutdownAll()
-  Actors.remote.shutdown()
-
-Good reads
+References
 ----------
 
 * Off-heap cache: http://www.quora.com/How-does-BigMemory-hide-objects-from-the-Java-garbage-collector
@@ -188,4 +133,3 @@ Good reads
 * sun.misc.Unsafe: http://stackoverflow.com/questions/5574241/interesting-uses-of-sun-misc-unsafe
 * sun.misc.Cleaner: http://groups.google.com/group/netty/browse_thread/thread/3be7f573384af977
 * Ketama algorithm: http://www.last.fm/user/RJ/journal/2007/04/10/rz_libketama_-_a_consistent_hashing_algo_for_memcache_clients
-* http://stackoverflow.com/questions/8550421/how-to-properly-shutdown-jvm-with-akka-remote-actor

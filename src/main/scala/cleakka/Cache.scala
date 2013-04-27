@@ -12,10 +12,19 @@ import com.twitter.chill.KryoBijection
 
 object Cache {
   val WATERMARK = 0.75
+
+  /**
+   * ttlSecs: 0 = Duration.Inf
+   * lastAccessed: [ms]
+   * lastAccessedSecs: Use Int instead of Long [ms] to save space
+   */
+  class Entry(val directByteBuffer: ByteBuffer, val ttlSecs: Int, var lastAccessedSecs: Int)
 }
 
-/** Non thread-safe local cache. For thread-safe use CacheActor instead. */
+/** Non thread-safe cache storage. For thread-safe, use LocalCache or ClusterCache. */
 class Cache(val limitInMB: Long) {
+  import Cache._
+
   private[this] val limit = limitInMB * 1024 * 1024
 
   private[this] val data = new MMap[Any, Entry]
