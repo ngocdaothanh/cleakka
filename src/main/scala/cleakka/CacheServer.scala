@@ -26,11 +26,11 @@ object CacheServer {
     system.actorOf(Props(new CacheServer(limitInMB)), escapeActorName(cacheName))
   }
 
-  def lookUp(cacheName: String): ActorRef = {
-    system.actorFor(escapeActorName(cacheName))
+  def connect(cacheName: String): ActorRef = {
+    system.actorFor("/user/" + escapeActorName(cacheName))
   }
 
-  def lookUp(cacheName: String, host: String, port: Int): ActorRef = {
+  def connect(cacheName: String, host: String, port: Int): ActorRef = {
     val path = "akka://" + SYSTEM_NAME + "@" + host + ":" + port + "/user/" + escapeActorName(cacheName)
     system.actorFor(path)
   }
