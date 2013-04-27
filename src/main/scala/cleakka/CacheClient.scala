@@ -9,12 +9,12 @@ import akka.util.Timeout
 
 object CacheClient {
   def connect(cacheName: String): CacheClient = {
-    val serverRef = CacheServer.lookUp(cacheName)
+    val serverRef = CacheServer.connect(cacheName)
     new CacheClient(serverRef)
   }
 
   def connect(cacheName: String, host: String, port: Int): CacheClient = {
-    val serverRef = CacheServer.lookUp(cacheName, host, port)
+    val serverRef = CacheServer.connect(cacheName, host, port)
     new CacheClient(serverRef)
   }
 }
@@ -34,8 +34,8 @@ class CacheClient(val serverRef: ActorRef) {
   def putIfAbsent(key: Any, value: AnyRef, ttlSecs: Int = 0): Future[Boolean] =
     ask(serverRef, PutIfAbsent(key, value, ttlSecs)).mapTo[Boolean]
 
-  def get[T: Manifest](key: Any): Future[T] =
-    ask(serverRef, Get(key)).mapTo[T]
+  def get[T: Manifest](key: Any): Future[Option[T]] =
+    ask(serverRef, Get(key)).mapTo[Option[T]]
 
   def remove(key: Any): Future[Boolean] =
     ask(serverRef, Remove(key)).mapTo[Boolean]
@@ -44,7 +44,7 @@ class CacheClient(val serverRef: ActorRef) {
     serverRef ! RemoveAll
   }
 
-  def getStats: Future[Stats] =
+  def stats: Future[Stats] =
     ask(serverRef, GetStats).mapTo[Stats]
 
   def stopServer() {
