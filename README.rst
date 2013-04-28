@@ -147,6 +147,12 @@ You should listen to Akka node up and down events to update the server list:
   client.removeServer("localhost", 2553)
   client.addServer("localhost", 2555)
 
+Dependencies
+------------
+
+* `Akka <http://akka.io/>`_: for distributed and cluster cache
+* `Twitter Chill <https://github.com/twitter/chill>`_: for (de)serializing objects
+
 References
 ----------
 
@@ -154,4 +160,4 @@ References
 * JCache: https://github.com/jsr107/jsr107spec
 * sun.misc.Unsafe: http://stackoverflow.com/questions/5574241/interesting-uses-of-sun-misc-unsafe
 * sun.misc.Cleaner: http://groups.google.com/group/netty/browse_thread/thread/3be7f573384af977
-* Ketama algorithm: http://www.last.fm/user/RJ/journal/2007/04/10/rz_libketama_-_a_consistent_hashing_algo_for_memcache_clients
+* Ketama algorithm: http://www.audioscrobbler.net/development/ketama/
