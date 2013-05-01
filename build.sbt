@@ -12,10 +12,14 @@ scalacOptions ++= Seq(
   "-unchecked"
 )
 
-libraryDependencies += "com.twitter" %% "chill" % "0.2.1"
+libraryDependencies += "com.twitter" %% "chill" % "0.2.2"
 
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.2-M3"
 
 libraryDependencies += "com.typesafe.akka" %% "akka-cluster-experimental" % "2.2-M3"
 
 libraryDependencies += "org.specs2" %% "specs2" % "1.14" % "test"
+
+// Skip API doc generation to speedup "publish-local" while developing.
+// Comment out this line when publishing to Sonatype.
+publishArtifact in (Compile, packageDoc) := false
