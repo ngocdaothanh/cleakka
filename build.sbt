@@ -12,7 +12,7 @@ scalacOptions ++= Seq(
   "-unchecked"
 )
 
-libraryDependencies += "com.twitter" %% "chill" % "0.2.2"
+libraryDependencies += "com.twitter" %% "chill" % "0.2.3"
 
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.2-M3"
 
