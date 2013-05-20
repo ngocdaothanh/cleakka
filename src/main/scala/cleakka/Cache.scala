@@ -8,8 +8,6 @@ import com.esotericsoftware.kryo.io.{ByteBufferInputStream, Input}
 import scala.collection.mutable.{HashMap => MMap}
 import scala.util.control.NonFatal
 
-import com.twitter.chill.KryoBijection
-
 object Cache {
   val WATERMARK = 0.75
 
@@ -55,7 +53,7 @@ class Cache(val limitInMB: Long) {
       DirectByteBufferCleaner.clean(buffer)
     }
 
-    val bytes     = KryoBijection(value)
+    val bytes     = InputStreamKryoInjection(value)
     val size      = bytes.length
     val remaining = limit - used
     var fit       = size <= remaining
@@ -122,12 +120,8 @@ class Cache(val limitInMB: Long) {
           entry.lastAccessedSecs = t1S
 
           buffer.rewind()
-
-          val kryo  = KryoBijection.getKryo
-          val bbis  = new ByteBufferInputStream(buffer)
-          val input = new Input(bbis)
-          val opt   = allCatch.opt { kryo.readClassAndObject(input) }
-          opt.asInstanceOf[Option[T]]
+          val bbis = new ByteBufferInputStream(buffer)
+          InputStreamKryoInjection.invert(bbis).asInstanceOf[Option[T]]
         } else {
           cacheMisses += 1
           data.remove(key)
