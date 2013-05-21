@@ -1,7 +1,7 @@
 package cleakka
 
 /** This is just a thin wrapper for Cache that adds "synchronized". */
-class LocalCache(override val limitInMB: Long) extends Cache(limitInMB) {
+class LocalCache(override val limitInMB: Int) extends Cache(limitInMB) {
   override def isDefinedAt(key: Any) = synchronized {
     super.isDefinedAt(key)
   }
