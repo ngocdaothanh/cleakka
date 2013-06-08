@@ -4,7 +4,7 @@ name         := "cleakka"
 
 version      := "1.0-SNAPSHOT"
 
-scalaVersion := "2.10.1"
+scalaVersion := "2.10.2"
 
 scalacOptions ++= Seq(
   "-deprecation",
@@ -14,9 +14,9 @@ scalacOptions ++= Seq(
 
 libraryDependencies += "com.twitter" %% "chill" % "0.2.3"
 
-libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.2-M3"
+libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.2.0-RC1"
 
-libraryDependencies += "com.typesafe.akka" %% "akka-cluster-experimental" % "2.2-M3"
+libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.2.0-RC1"
 
 libraryDependencies += "org.specs2" %% "specs2" % "1.14" % "test"
 
