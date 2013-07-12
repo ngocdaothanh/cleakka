@@ -14,9 +14,9 @@ scalacOptions ++= Seq(
 
 libraryDependencies += "com.twitter" %% "chill" % "0.2.3"
 
-libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.2.0-RC1"
+libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.2.0"
 
-libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.2.0-RC1"
+libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.2.0"
 
 libraryDependencies += "org.specs2" %% "specs2" % "1.14" % "test"
 
