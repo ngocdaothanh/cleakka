@@ -44,19 +44,22 @@ object CacheServer {
   private def escapeActorName(cacheName: String) = URLEncoder.encode(cacheName, "UTF-8")
 
   private def actorSelection2ActorRef(sel: ActorSelection): Future[Option[ActorRef]] = {
+    implicit val system  = ActSys.SYSTEM
+    implicit val timeout = ActSys.TIMEOUT
+
     val tmpRef = actor(new Act {
       var asker: ActorRef = _
       become {
-        case "ask" =>
+        case "Identify" =>
           asker = sender
-          sel ! new Identify("dummy")
+          sel ! new Identify(None)
 
         case ActorIdentity(_, opt) =>
           asker ! opt
           context.stop(self)
       }
     })
-    ask(tmpRef, "ask").mapTo[Option[ActorRef]]
+    ask(tmpRef, "Identify").mapTo[Option[ActorRef]]
   }
 }
 

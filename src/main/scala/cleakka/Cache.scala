@@ -20,10 +20,10 @@ object Cache {
 }
 
 /** Non thread-safe cache storage. For thread-safe, use LocalCache or ClusterCache. */
-class Cache(val limitInMB: Long) {
+class Cache(val limitInMB: Int) {
   import Cache._
 
-  private[this] val limit = limitInMB * 1024 * 1024
+  private[this] val limit = limitInMB.toLong * 1024L * 1024L
 
   private[this] val data = new MMap[Any, Entry]
   private[this] var used = 0L  // Important, must be Long, not Int
