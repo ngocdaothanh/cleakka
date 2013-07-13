@@ -2,6 +2,7 @@ package cleakka
 
 import java.net.URLEncoder
 import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
 
 import akka.actor.{
   Actor, ActorRef, Props,
@@ -25,7 +26,7 @@ object CacheServer {
 
   //----------------------------------------------------------------------------
 
-  def start(cacheName: String, limitInMB: Long): ActorRef = {
+  def start(cacheName: String, limitInMB: Int): ActorRef = {
     ActSys.SYSTEM.actorOf(Props(classOf[CacheServer], limitInMB), escapeActorName(cacheName))
   }
 
@@ -44,22 +45,8 @@ object CacheServer {
   private def escapeActorName(cacheName: String) = URLEncoder.encode(cacheName, "UTF-8")
 
   private def actorSelection2ActorRef(sel: ActorSelection): Future[Option[ActorRef]] = {
-    implicit val system  = ActSys.SYSTEM
     implicit val timeout = ActSys.TIMEOUT
-
-    val tmpRef = actor(new Act {
-      var asker: ActorRef = _
-      become {
-        case "Identify" =>
-          asker = sender
-          sel ! new Identify(None)
-
-        case ActorIdentity(_, opt) =>
-          asker ! opt
-          context.stop(self)
-      }
-    })
-    ask(tmpRef, "Identify").mapTo[Option[ActorRef]]
+    sel.ask(new Identify(None)).mapTo[ActorIdentity].map(_.ref)
   }
 }
 
