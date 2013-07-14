@@ -6,36 +6,37 @@ import scala.concurrent.duration._
 
 import akka.actor.ActorRef
 import akka.pattern.ask
+import akka.routing.ConsistentHash
 import akka.util.Timeout
 
-class ConsistentHashingCacheClient {
+class ConsistentHashCacheClient {
   import CacheServer._
 
-  private var ketama:  Ketama        = _
-  private var allRefs: Seq[ActorRef] = _
+  private var h = ConsistentHash[ActorRef](Seq(), 100)
 
   private[this] implicit val timeout = Timeout(5.seconds)
 
   def isDefinedAt(key: Any): Future[Boolean] =
-    ask(allRefs(ketama.which(key)), IsDefinedAt(key)).mapTo[Boolean]
+    ask(h.nodeFor(key.toString), IsDefinedAt(key)).mapTo[Boolean]
 
   def put(key: Any, value: AnyRef, ttlSecs: Int = 0) {
-    allRefs(ketama.which(key)) ! Put(key, value, ttlSecs)
+    h.nodeFor(key.toString) ! Put(key, value, ttlSecs)
   }
 
   def putIfAbsent(key: Any, value: AnyRef, ttlSecs: Int = 0): Future[Boolean] =
-    ask(allRefs(ketama.which(key)), PutIfAbsent(key, value, ttlSecs)).mapTo[Boolean]
+    ask(h.nodeFor(key.toString), PutIfAbsent(key, value, ttlSecs)).mapTo[Boolean]
 
   def get[T: Manifest](key: Any): Future[T] =
-    ask(allRefs(ketama.which(key)), Get(key)).mapTo[T]
+    ask(h.nodeFor(key.toString), Get(key)).mapTo[T]
 
   def remove(key: Any): Future[Boolean] =
-    ask(allRefs(ketama.which(key)), Remove(key)).mapTo[Boolean]
+    ask(h.nodeFor(key.toString), Remove(key)).mapTo[Boolean]
 
   def removeAll() {
-    allRefs.foreach { _ ! RemoveAll }
+    //allRefs.foreach { _ ! RemoveAll }
   }
 
+  /*
   def getStats: Future[Stats] = {
     // See Akka doc about Future http://akka.io/docs/
     val seqOfFutures = allRefs.map { ref => ask(ref, GetStats).mapTo[Stats] }
@@ -44,4 +45,5 @@ class ConsistentHashingCacheClient {
       Stats.aggregate(seqOfStats)
     }
   }
+  */
 }
