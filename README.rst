@@ -36,7 +36,7 @@ Put:
 
 ::
 
-  cache.put(any, anyRef)
+  cache.put(key, value)
 
 You can put anything serializable to the cache.
 `Twitter Chill <https://github.com/twitter/chill>`_, which is based on
