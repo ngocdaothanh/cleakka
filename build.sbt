@@ -18,7 +18,7 @@ scalacOptions ++= Seq(
 // java.lang.UnsupportedClassVersionError: Unsupported major.minor version 51.0
 javacOptions ++= Seq("-source", "1.6", "-target", "1.6")
 
-libraryDependencies += "com.twitter" %% "chill" % "0.2.3"
+libraryDependencies += "com.twitter" %% "chill-bijection" % "0.3.4"
 
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.2.1"
 

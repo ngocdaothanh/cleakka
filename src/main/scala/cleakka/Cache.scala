@@ -1,20 +1,23 @@
 package cleakka
 
 import java.nio.ByteBuffer
-import scala.util.control.Exception.allCatch
-
-import com.esotericsoftware.kryo.io.{ByteBufferInputStream, Input}
-
 import scala.collection.mutable.{HashMap => MMap}
+import scala.util.control.Exception.allCatch
 import scala.util.control.NonFatal
+
+import com.twitter.chill.{KryoInjection, RichKryo, ScalaKryoInstantiator}
 
 object Cache {
   val WATERMARK = 0.75
 
+  val richKryo = new RichKryo((new com.twitter.chill.ScalaKryoInstantiator).newKryo)
+
   /**
-   * ttlSecs: 0 = Duration.Inf
-   * lastAccessed: [ms]
-   * lastAccessedSecs: Use Int instead of Long [ms] to save space
+   * @param ttlSecs 0 = Duration.Inf
+   *
+   * @param lastAccessed [ms]
+   *
+   * @param lastAccessedSecs Use Int instead of Long [ms] to save space
    */
   class Entry(val directByteBuffer: ByteBuffer, val ttlSecs: Int, var lastAccessedSecs: Int)
 }
@@ -53,7 +56,7 @@ class Cache(val limitInMB: Int) {
       DirectByteBufferCleaner.clean(buffer)
     }
 
-    val bytes     = InputStreamKryoInjection(value)
+    val bytes     = KryoInjection(value)
     val size      = bytes.length
     val remaining = limit - used
     var fit       = size <= remaining
@@ -120,8 +123,7 @@ class Cache(val limitInMB: Int) {
           entry.lastAccessedSecs = t1S
 
           buffer.rewind()
-          val bbis = new ByteBufferInputStream(buffer)
-          InputStreamKryoInjection.invert(bbis).asInstanceOf[Option[T]]
+          richKryo.fromByteBuffer(buffer).asInstanceOf[Option[T]]
         } else {
           cacheMisses += 1
           data.remove(key)
