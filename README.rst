@@ -73,7 +73,7 @@ Remote cache
 
 Start a CacheServer on a node and access it from another node.
 
-See http://doc.akka.io/docs/akka/2.1.2/scala/remoting.html to know how to
+See http://doc.akka.io/docs/akka/2.2.1/scala/remoting.html to know how to
 enable Akka remoting.
 
 On cache server node:
