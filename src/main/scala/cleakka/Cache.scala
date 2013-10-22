@@ -2,15 +2,18 @@ package cleakka
 
 import java.nio.ByteBuffer
 import scala.collection.mutable.{HashMap => MMap}
-import scala.util.control.Exception.allCatch
-import scala.util.control.NonFatal
 
 import com.twitter.chill.{KryoInjection, RichKryo, ScalaKryoInstantiator}
 
 object Cache {
+  /**
+   * When a new item can't be put to the cache because there's not enough space
+   * left, existing items in the cache will be evicted until the usage is below
+   * WATERMARK so that the new item can be put to the cache.
+   */
   val WATERMARK = 0.75
 
-  val richKryo = new RichKryo((new com.twitter.chill.ScalaKryoInstantiator).newKryo)
+  val richKryo = new RichKryo((new ScalaKryoInstantiator).newKryo)
 
   /**
    * @param ttlSecs 0 = Duration.Inf
