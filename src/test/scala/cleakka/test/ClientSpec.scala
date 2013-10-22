@@ -28,6 +28,8 @@ class ClientSpec extends Specification {
               println(ba)
           }
       }
+
+      true must equalTo(true)
     }
   }
 }
