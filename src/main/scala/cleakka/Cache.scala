@@ -48,7 +48,7 @@ class Cache(val limitInMB: Int) {
   def isDefinedAt(key: Any) = data.isDefinedAt(key)
 
   /** @param ttlSecs Non positive means no TTL */
-  def put(key: Any, value: AnyRef, ttlSecs: Int = 0) {
+  def put(key: Any, value: Any, ttlSecs: Int = 0) {
     val t1Ms = System.currentTimeMillis()
     val t1S  = (t1Ms / 1000).toInt
 
@@ -78,12 +78,12 @@ class Cache(val limitInMB: Int) {
     totalPutMillis += t2Ms - t1Ms
   }
 
-  def putIfAbsent(key: Any, value: AnyRef): Boolean = {
+  def putIfAbsent(key: Any, value: Any): Boolean = {
     putIfAbsent(key, value, 0)
   }
 
   /** @param ttlSecs Non positive means no TTL */
-  def putIfAbsent(key: Any, value: AnyRef, ttlSecs: Int): Boolean = {
+  def putIfAbsent(key: Any, value: Any, ttlSecs: Int): Boolean = {
     data.get(key) match {
       case None =>
         put(key, value, ttlSecs)
@@ -96,7 +96,7 @@ class Cache(val limitInMB: Int) {
   }
 
   /** @param ttlSecs Non positive means no TTL */
-  def putIfAbsent(key: Any, ttlSecs: Int = 0)(f: => AnyRef): Boolean = {
+  def putIfAbsent(key: Any, ttlSecs: Int = 0)(f: => Any): Boolean = {
     data.get(key) match {
       case None =>
         put(key, f, ttlSecs)

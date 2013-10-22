@@ -19,11 +19,11 @@ class ConsistentHashCacheClient {
   def isDefinedAt(key: Any): Future[Boolean] =
     ask(h.nodeFor(key.toString), IsDefinedAt(key)).mapTo[Boolean]
 
-  def put(key: Any, value: AnyRef, ttlSecs: Int = 0) {
+  def put(key: Any, value: Any, ttlSecs: Int = 0) {
     h.nodeFor(key.toString) ! Put(key, value, ttlSecs)
   }
 
-  def putIfAbsent(key: Any, value: AnyRef, ttlSecs: Int = 0): Future[Boolean] =
+  def putIfAbsent(key: Any, value: Any, ttlSecs: Int = 0): Future[Boolean] =
     ask(h.nodeFor(key.toString), PutIfAbsent(key, value, ttlSecs)).mapTo[Boolean]
 
   def get[T: Manifest](key: Any): Future[T] =

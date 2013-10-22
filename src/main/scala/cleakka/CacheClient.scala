@@ -28,11 +28,11 @@ class CacheClient(val serverRef: ActorRef) {
   def isDefinedAt(key: Any): Future[Boolean] =
     ask(serverRef, IsDefinedAt(key)).mapTo[Boolean]
 
-  def put(key: Any, value: AnyRef, ttlSecs: Int = 0) {
+  def put(key: Any, value: Any, ttlSecs: Int = 0) {
     serverRef ! Put(key, value, ttlSecs)
   }
 
-  def putIfAbsent(key: Any, value: AnyRef, ttlSecs: Int = 0): Future[Boolean] =
+  def putIfAbsent(key: Any, value: Any, ttlSecs: Int = 0): Future[Boolean] =
     ask(serverRef, PutIfAbsent(key, value, ttlSecs)).mapTo[Boolean]
 
   def get[T: Manifest](key: Any): Future[Option[T]] =

@@ -133,7 +133,7 @@ On cache client node:
 
 ::
 
-  val client = cleakka.ConsistentHashingCacheClient.connect("myCache", Seq(
+  val client = cleakka.ConsistentHashCacheClient.connect("myCache", Seq(
     ("localhost", 2553),
     ("localhost", 2554)
   ))

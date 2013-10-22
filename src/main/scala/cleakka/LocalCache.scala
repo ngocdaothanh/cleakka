@@ -6,19 +6,19 @@ class LocalCache(override val limitInMB: Int) extends Cache(limitInMB) {
     super.isDefinedAt(key)
   }
 
-  override def put(key: Any, value: AnyRef, ttlSecs: Int = 0) = synchronized {
+  override def put(key: Any, value: Any, ttlSecs: Int = 0) = synchronized {
     super.put(key, value, ttlSecs)
   }
 
-  override def putIfAbsent(key: Any, value: AnyRef) = synchronized {
+  override def putIfAbsent(key: Any, value: Any) = synchronized {
     super.putIfAbsent(key, value)
   }
 
-  override def putIfAbsent(key: Any, value: AnyRef, ttlSecs: Int) = synchronized {
+  override def putIfAbsent(key: Any, value: Any, ttlSecs: Int) = synchronized {
     super.putIfAbsent(key, value, ttlSecs)
   }
 
-  override def putIfAbsent(key: Any, ttlSecs: Int = 0)(f: => AnyRef) = synchronized {
+  override def putIfAbsent(key: Any, ttlSecs: Int = 0)(f: => Any) = synchronized {
     super.putIfAbsent(key, ttlSecs)(f)
   }
 
